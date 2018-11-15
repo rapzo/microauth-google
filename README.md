@@ -30,7 +30,7 @@ const options = {
   clientSecret: 'CLIENT_SECRET',
   callbackUrl: 'http://localhost:3000/auth/google/callback',
   path: '/auth/google',
-  scope: 'https://www.googleapis.com/auth/plus.me'
+  scopes: 'https://www.googleapis.com/auth/plus.me'
 };
 
 const googleAuth = microAuthGoogle(options);
