@@ -1,11 +1,11 @@
 'use strict'
 
 const {send} = require('micro');
-const microAuthGoogle = require('./');
+const microAuthGoogle = require('.');
 
 const options = {
-  clientId: 'CLIENT_ID',
-  clientSecret: 'CLIENT_SECRET',
+  clientId: '',
+  clientSecret: '',
   callbackUrl: 'http://localhost:3000/auth/google/callback',
   path: '/auth/google',
   scope: 'https://www.googleapis.com/auth/plus.me'
@@ -18,9 +18,9 @@ module.exports = googleAuth(async (req, res, auth) => {
     return send(res, 404, 'Not Found');
   }
 
-  if (auth.err) {
+  if (auth.error) {
     // Error handler
-    console.error(auth.err)
+    console.error(auth.error)
     return send(res, 403, 'Forbidden');
   }
 

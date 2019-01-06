@@ -2,71 +2,52 @@
 
 const querystring = require('querystring')
 const url = require('url')
-const google = require('googleapis')
+const {OAuth2Client} = require('google-auth-library');
 const uuid = require('uuid')
 const redirect = require('micro-redirect')
+const assert = require('assert')
 
 const provider = 'google';
-const {OAuth2} = google.auth
-const plus = google.plus('v1')
-const DEFAULT_SCOPES = [
+const DEFAULT_SCOPE = [
   'https://www.googleapis.com/auth/plus.me'
 ]
-
-const getToken = (oauth2Client, code) => new Promise((resolve, reject) => {
-  oauth2Client.getToken(code, (err, tokens) => {
-    if (err) return reject(err)
-
-    oauth2Client.setCredentials(tokens)
-
-    resolve(tokens)
-  })
-})
-
-const getUser = oauth2Client => new Promise((resolve, reject) => {
-  plus.people.get({userId: 'me', auth: oauth2Client}, (err, response) => {
-    if (err) return reject(err)
-
-    resolve(response)
-  })
-})
+const PROFILE_URL = 'https://www.googleapis.com/plus/v1/people/me'
 
 const microAuthGoogle = ({
   clientId,
   clientSecret,
   callbackUrl,
   path,
-  scopes = [],
+  scopes = DEFAULT_SCOPE,
   accessType = 'offline'
 }) => {
   const states = [];
-  const oauth2Client = new OAuth2(clientId, clientSecret, callbackUrl)
+  const oAuth2Client = new OAuth2Client(clientId, clientSecret, callbackUrl)
+  const scope = [].concat(scopes)
 
-  scopes = DEFAULT_SCOPES.concat(scopes).reduce((scopes, scope) => {
-    if (scopes.includes(scope)) return scopes
-    scopes.push(scope)
-    return scope
-  })
+  assert(
+    Array.isArray(scope) && scope.length > 0,
+    'Invalid scopes'
+  )
 
   return fn => async (req, res, ...args) => {
     const {pathname, query} = url.parse(req.url)
-
     if (pathname === path) {
       try {
         const state = uuid.v4()
         states.push(state)
 
-        const redirectUrl = oauth2Client.generateAuthUrl({
+        const redirectUrl = oAuth2Client.generateAuthUrl({
           // eslint-disable-next-line camelcase
           access_type: accessType,
-          scope: scopes,
+          scope,
           state
         })
 
         return redirect(res, 302, redirectUrl)
-      } catch (err) {
-        args.push({err, provider})
-        return fn(req, res, ...args)
+      } catch (error) {
+        console.log(...args.concat({error, provider}))
+        return fn(req, res, ...args.concat({error, provider}))
       }
     }
 
@@ -74,36 +55,34 @@ const microAuthGoogle = ({
     if (pathname === callbackPath) {
       try {
         const {state, code} = querystring.parse(query)
-
         if (!states.includes(state)) {
-          const err = new Error('Invalid state')
-          args.push({err, provider})
-          return fn(req, res, ...args)
+          return fn(req, res, ...args.concat({
+            provider,
+            error: new Error('Invalid state')
+          }))
         }
 
         states.splice(states.indexOf(state), 1)
 
-        const tokens = await getToken(oauth2Client, code)
-
-        if (tokens.error) {
-          args.push({err: tokens.error, provider});
-          return fn(req, res, ...args);
+        const {tokens, error} = await oAuth2Client.getToken(code)
+        if (error) {
+          return fn(req, res, ...args.concat({error, provider}))
         }
 
-        const user = await getUser(oauth2Client)
+        oAuth2Client.setCredentials(tokens);
+
+        const {data} = await oAuth2Client.request({url: PROFILE_URL})
         const result = {
           provider,
           accessToken: tokens.access_token,
-          info: user,
-          tokens
+          info: data,
+          client: oAuth2Client
         }
 
-        args.push({result})
-
-        return fn(req, res, ...args)
-      } catch (err) {
-        args.push({err, provider})
-        return fn(req, res, ...args)
+        return fn(req, res, ...args.concat({result}))
+      } catch (error) {
+        console.log(...args.concat({error, provider}))
+        return fn(req, res, ...args.concat({error, provider}))
       }
     }
 

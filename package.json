@@ -5,25 +5,32 @@
   "main": "index.js",
   "scripts": {
     "start": "micro example.js",
-    "test": "xo"
+    "test": "xo && ava",
+    "coverage": "nyc --reporter=text-summary --reporter=html --reporter=lcov npx ava"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/microauth/microauth-google.git"
   },
-  "author": "Rui Lima",
+  "author": "Rui Lima <ruipedro.lima@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "googleapis": "^22.2.0",
+    "google-auth-library": "^2.0.2",
     "micro-redirect": "^1.0.0",
-    "uuid": "^3.1.0"
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
-    "eslint-config-prettier": "^2.6.0",
-    "xo": "^0.18.2"
+    "ava": "^1.0.1",
+    "eslint-config-prettier": "^3.3.0",
+    "got": "^9.5.0",
+    "micro": "^9.3.3",
+    "nock": "^10.0.6",
+    "nyc": "^13.1.0",
+    "test-listen": "^1.1.0",
+    "xo": "^0.23.0"
   },
   "peerDependencies": {
-    "micro": "^8.0.0"
+    "micro": "^9.3.3"
   },
   "xo": {
     "spaces": 2,
